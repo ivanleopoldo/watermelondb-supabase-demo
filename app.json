@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ivaintwc.watermelondbsupabasedemo",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -39,7 +43,6 @@
           }
         }
       ],
-      ["@morrowdigital/watermelondb-expo-plugin"],
       [
         "expo-build-properties",
         {
@@ -57,6 +60,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fc4d8588-76a3-4d1a-b775-1ee85f8980fd"
+      }
     }
   }
 }
