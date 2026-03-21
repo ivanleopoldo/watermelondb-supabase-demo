@@ -1,37 +1,111 @@
-import { Pressable } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import type { PressableProps } from "react-native/Libraries/Components/Pressable/Pressable";
-import { styled, Text, View, YGroup } from "tamagui";
+import { withObservables } from "@nozbe/watermelondb/react";
+import { useEffect, useState } from "react";
+import { Pressable, type PressableProps } from "react-native";
+import {
+	Button,
+	Input,
+	ScrollView,
+	Text,
+	View,
+	XStack,
+	YGroup,
+	YStack,
+} from "tamagui";
+import { database } from "../lib/db";
+import type { Todo } from "../models/Todo";
 
-const StyledSafeAreaView = styled(SafeAreaView);
+const todos = database.collections.get<Todo>("todos").query();
 
 export default function Index() {
-	const titles = ["Home", "Work", "Groceries", "Chores", "Other"];
+	const [title, setTitle] = useState("");
+	const [todosList, setTodosList] = useState<Todo[]>([]);
+
+	const handleAddTodo = () => {
+		database.write(() => {
+			return database.collections.get<Todo>("todos").create((todo) => {
+				todo.title = title;
+				todo.isCompleted = false;
+			});
+		});
+	};
+
+	useEffect(() => {
+		const subscription = todos.observe().subscribe((todos) => {
+			setTodosList(todos);
+		});
+
+		return () => subscription.unsubscribe();
+	}, []);
 
 	return (
-		<StyledSafeAreaView padding={10}>
-			<YGroup>
-				{titles.map((title) => (
-					<YGroup.Item key={title}>
-						<TodoItem title={title} />
-					</YGroup.Item>
-				))}
-			</YGroup>
-		</StyledSafeAreaView>
+		<ScrollView padding={10}>
+			<YStack gap={10}>
+				<XStack alignItems="center" gap={"$2"}>
+					<Input
+						value={title}
+						returnKeyLabel="submit"
+						submitBehavior="blurAndSubmit"
+						onSubmitEditing={(e) => {
+							if (!title) return;
+							handleAddTodo();
+							setTitle("");
+							e.nativeEvent.text = "";
+						}}
+						onChangeText={setTitle}
+						flex={1}
+						placeholder={"Add a todo"}
+					/>
+					<Button onPress={() => handleAddTodo()}>+</Button>
+				</XStack>
+				<Text color={"dimgray"} fontWeight="300">
+					TODOS
+				</Text>
+				<TodoList todos={todosList} />
+			</YStack>
+		</ScrollView>
 	);
 }
 
-const TodoItem = ({ title, ...props }: { title?: string } & PressableProps) => {
+const TodoList = ({ todos }: { todos: Todo[] }) => {
+	return (
+		<YGroup>
+			{todos.map((todo: Todo) => {
+				return (
+					<YGroup.Item key={todo.id}>
+						<EnhancedTodoItem
+							onPress={() => todo.toggleCompleted()}
+							todo={todo}
+						/>
+					</YGroup.Item>
+				);
+			})}
+		</YGroup>
+	);
+};
+
+const TodoItem = ({
+	todo,
+	...props
+}: { title?: string; todo: Todo } & PressableProps) => {
 	return (
 		<Pressable {...props}>
 			<View
+				gap={"$2"}
+				flexDirection="row"
 				backgroundColor="$backgroundHover"
 				borderRadius="$4"
 				padding="$4"
 				marginBottom="$2"
 			>
-				<Text>{title}</Text>
+				<Text>{todo.isCompleted ? "✅ " : "⬜️ "}</Text>
+				<Text>{todo.title}</Text>
 			</View>
 		</Pressable>
 	);
 };
+
+const enhanced = withObservables(["todo"], ({ todo }) => ({
+	todo,
+}));
+
+const EnhancedTodoItem = enhanced(TodoItem);
