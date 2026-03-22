@@ -5,6 +5,7 @@ import { Pressable } from "react-native";
 import { createTamagui, styled, TamaguiProvider, View } from "tamagui";
 import { useAuth } from "../hooks/useAuth";
 import { AuthProvider } from "../providers/AuthProvider";
+import { SyncProvider } from "../providers/SyncProvider";
 
 const config = createTamagui(defaultConfig);
 
@@ -18,7 +19,9 @@ export default function RootLayout() {
   return (
     <TamaguiProvider defaultTheme={"light"} config={config}>
       <AuthProvider>
-        <RootLayoutNav />
+        <SyncProvider>
+          <RootLayoutNav />
+        </SyncProvider>
       </AuthProvider>
     </TamaguiProvider>
   );

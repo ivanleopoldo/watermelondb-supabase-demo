@@ -21,6 +21,8 @@ export class Todo extends Model {
   // @ts-expect-error
   @field("is_completed") isCompleted!: boolean;
   // @ts-expect-error
+  @text("user_id") userId!: string;
+  // @ts-expect-error
   @writer async toggleCompleted() {
     await this.update((todo) => {
       todo.isCompleted = !todo.isCompleted;

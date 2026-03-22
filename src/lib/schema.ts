@@ -10,6 +10,7 @@ export const schema = appSchema({
         { name: "is_completed", type: "boolean" },
         { name: "updated_at", type: "number" },
         { name: "deleted_at", type: "number", isOptional: true },
+        { name: "user_id", type: "string" },
       ],
     }),
   ],

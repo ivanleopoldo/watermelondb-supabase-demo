@@ -20,6 +20,8 @@ export type Database = {
           deleted_at: string | null
           id: string
           is_completed: boolean
+          last_modified_at: string
+          server_created_at: string
           title: string
           updated_at: string
           user_id: string
@@ -29,6 +31,8 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_completed?: boolean
+          last_modified_at?: string
+          server_created_at?: string
           title: string
           updated_at?: string
           user_id: string
@@ -38,6 +42,8 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_completed?: boolean
+          last_modified_at?: string
+          server_created_at?: string
           title?: string
           updated_at?: string
           user_id?: string
