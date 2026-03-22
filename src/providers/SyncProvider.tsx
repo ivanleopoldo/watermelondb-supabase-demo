@@ -14,6 +14,7 @@ export const SyncContext = createContext<{
   triggerSync: () => {},
 });
 
+// TODO: enhance
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [channel, setChannel] = useState<RealtimeChannel>();
   const [isSyncing, setIsSyncing] = useState(false);

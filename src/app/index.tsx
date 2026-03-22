@@ -73,12 +73,18 @@ export default function Index() {
 }
 
 const TodoList = ({ todos }: { todos: Todo[] }) => {
+  const handleDeleteTodo = (todo: Todo) => {
+    database.write(() => {
+      return todo.markAsDeleted();
+    });
+  };
   return (
     <YGroup>
       {todos.map((todo: Todo) => {
         return (
           <YGroup.Item key={todo.id}>
             <EnhancedTodoItem
+              onLongPress={() => handleDeleteTodo(todo)}
               onPress={() => todo.toggleCompleted()}
               todo={todo}
             />
