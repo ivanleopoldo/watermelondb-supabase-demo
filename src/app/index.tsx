@@ -23,6 +23,7 @@ export default function Index() {
   const { user } = useAuth();
 
   const handleAddTodo = () => {
+    if (!title) return;
     if (user) {
       console.log(user.id);
       database.write(() => {
