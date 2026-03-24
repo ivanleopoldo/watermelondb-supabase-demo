@@ -11,7 +11,7 @@ import { sync } from "../lib/sync";
 
 export const SyncContext = createContext<{
   isSyncing: boolean;
-  triggerSync: () => void;
+  triggerSync: ({ sendBroadcast }: { sendBroadcast?: boolean }) => void;
   sendSyncBroadcast: () => void;
 }>({
   isSyncing: false,
@@ -39,13 +39,15 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
   }, [channel]);
 
-  function triggerSync() {
+  function triggerSync({
+    sendBroadcast = true,
+  }: { sendBroadcast?: boolean } = {}) {
     if (!isSyncing) {
       console.log("🔄 Syncing...");
       setIsSyncing(true);
       sync()
         .then(() => {
-          sendSyncBroadcast();
+          if (sendBroadcast) sendSyncBroadcast();
         })
         .catch((e) => {
           console.error(e);
@@ -116,6 +118,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       subscription.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      triggerSync({ sendBroadcast: false });
+    }
+  }, [user]);
 
   return (
     <SyncContext.Provider
