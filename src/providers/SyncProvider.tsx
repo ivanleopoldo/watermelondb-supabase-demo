@@ -1,5 +1,8 @@
-import { RealtimeChannel } from "@supabase/supabase-js";
-import { createContext, useEffect, useRef, useState } from "react";
+import {
+  REALTIME_SUBSCRIBE_STATES,
+  RealtimeChannel,
+} from "@supabase/supabase-js";
+import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { useAuth } from "../hooks/useAuth";
 import { database } from "../lib/db";
@@ -9,94 +12,117 @@ import { sync } from "../lib/sync";
 export const SyncContext = createContext<{
   isSyncing: boolean;
   triggerSync: () => void;
+  sendSyncBroadcast: () => void;
 }>({
   isSyncing: false,
   triggerSync: () => {},
+  sendSyncBroadcast: () => {},
 });
 
-// TODO: enhance
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const [channel, setChannel] = useState<RealtimeChannel>();
   const [isSyncing, setIsSyncing] = useState(false);
+  const channel = useRef<RealtimeChannel | null>(null);
+
   const { user } = useAuth();
 
-  // Ref to track ongoing sync and queued triggers
-  const syncLock = useRef(false);
-  const queued = useRef(false);
+  const sendSyncBroadcast = useCallback(() => {
+    if (channel.current && channel.current.state === "joined") {
+      console.log("♻️ Sending Sync Broadcast...");
+      channel.current
+        .send({ type: "broadcast", event: "sync" })
+        .then((response) => {
+          console.log("♻️ Broadcast sent: ", response);
+        })
+        .catch((e) => {
+          console.error(e);
+        });
+    }
+  }, [channel]);
 
   function triggerSync() {
-    if (syncLock.current) {
-      queued.current = true; // queue one sync if already running
-      return;
-    }
-
-    syncLock.current = true;
-    setIsSyncing(true);
-
-    (async () => {
-      try {
-        await sync(); // your WatermelonDB sync function
-        sendSyncEvent();
-      } catch (err) {
-        console.error("Sync error:", err);
-      } finally {
-        syncLock.current = false;
-        setIsSyncing(false);
-
-        // If another trigger was queued while syncing, run it immediately
-        if (queued.current) {
-          queued.current = false;
-          triggerSync();
-        }
-      }
-    })();
-  }
-
-  function sendSyncEvent() {
-    if (channel) {
-      channel.send({
-        type: "broadcast",
-        event: "sync",
-        payload: { message: "Sync event triggered" },
-      });
+    if (!isSyncing) {
+      console.log("🔄 Syncing...");
+      setIsSyncing(true);
+      sync()
+        .then(() => {
+          sendSyncBroadcast();
+        })
+        .catch((e) => {
+          console.error(e);
+        })
+        .finally(() => {
+          setIsSyncing(false);
+        });
     }
   }
 
-  // Subscribe to user-specific sync broadcasts
+  // listen to sync broadcasts
   useEffect(() => {
     if (!user) return;
+    const syncChannel = supabase.channel(`sync-${user.id}`);
 
-    const ch = supabase.channel(`sync-${user.id}`);
-    const subscription = ch
-      .on("broadcast", { event: "sync" }, () => triggerSync())
-      .subscribe();
-    setChannel(ch);
+    const subscription = syncChannel
+      .on("broadcast", { event: "sync" }, (payload) => {
+        console.log("♻️ Received Broadcast: ", payload);
+        triggerSync();
+      })
+      .subscribe((status) => {
+        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+          channel.current = subscription;
+        }
+      });
+    return () => {
+      subscription.unsubscribe();
+      channel.current = null;
+    };
+  }, [user]);
+
+  // listen to database changes and sync
+  useEffect(() => {
+    const subscription = database.withChangesForTables(["todos"]).subscribe({
+      next: (changes) => {
+        if (changes) {
+          const unsynced = changes.filter(
+            (c) => c.record.syncStatus !== "synced",
+          );
+
+          if (unsynced.length && changes.length) {
+            console.log("🔔 Detected changes in database...");
+          }
+
+          if (unsynced.length) {
+            triggerSync();
+          }
+        }
+      },
+    });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [user]);
+  }, [database]);
 
-  // Listen to database changes
+  // listen to app state (foreground/background))
   useEffect(() => {
-    const subscription = database
-      .withChangesForTables(["todos"])
-      .subscribe(() => triggerSync());
+    triggerSync();
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Listen to app state changes (foreground/background)
-  useEffect(() => {
     const subscription = AppState.addEventListener("change", () => {
       triggerSync();
     });
 
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   return (
-    <SyncContext.Provider value={{ isSyncing, triggerSync }}>
+    <SyncContext.Provider
+      value={{
+        isSyncing,
+        triggerSync,
+        sendSyncBroadcast,
+      }}
+    >
       {children}
     </SyncContext.Provider>
   );

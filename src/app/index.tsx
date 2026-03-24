@@ -12,6 +12,7 @@ import {
   YStack,
 } from "tamagui";
 import { useAuth } from "../hooks/useAuth";
+import { useSync } from "../hooks/useSync";
 import { database } from "../lib/db";
 import type { Todo } from "../models/Todo";
 
@@ -21,6 +22,7 @@ export default function Index() {
   const [title, setTitle] = useState("");
   const [todosList, setTodosList] = useState<Todo[]>([]);
   const { user } = useAuth();
+  const { triggerSync, isSyncing, sendSyncBroadcast } = useSync();
 
   const handleAddTodo = () => {
     if (!title) return;
@@ -63,7 +65,17 @@ export default function Index() {
             placeholder={"Add a todo"}
           />
           <Button onPress={() => handleAddTodo()}>+</Button>
+          <Button disabled={isSyncing} onPress={() => triggerSync()}>
+            Refresh
+          </Button>
         </XStack>
+        <Button
+          onPress={() => {
+            sendSyncBroadcast();
+          }}
+        >
+          Broadcast
+        </Button>
         <Text color={"dimgray"} fontWeight="300">
           TODOS
         </Text>
