@@ -102,12 +102,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     };
   }, [database]);
 
-  // listen to app state (foreground/background))
+  // listen to app state (check if its in foreground)
   useEffect(() => {
     triggerSync();
 
-    const subscription = AppState.addEventListener("change", () => {
-      triggerSync();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        triggerSync();
+      }
     });
 
     return () => {
